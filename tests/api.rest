@@ -1,0 +1,45 @@
+@BASE_URL = http://127.0.0.1:8000/api/v1
+
+### Create a new category
+POST {{BASE_URL}}/categories
+Accept: application/json
+Content-Type: application/json
+
+{
+  "name": "Logo Design",
+  "description": "Digital logo design products and branding assets",
+  "is_active": true
+}
+
+### Create a new product
+POST {{BASE_URL}}/products
+Accept: application/json
+Content-Type: application/json
+
+{
+  "category_id": 1,
+  "name": "Minimalist Logo Pack",
+  "short_description": "Clean and modern minimalist logo pack for business branding.",
+  "description": "This digital product includes editable logo files, preview assets, and brand usage examples.",
+  "price": 250000,
+  "compare_at_price": 350000,
+  "file_type": "zip",
+  "file_size": 2048000,
+  "is_active": true,
+  "is_featured": true
+}
+
+### GET all products
+GET {{BASE_URL}}/products
+
+### GET a single product
+GET {{BASE_URL}}/products?category_id=1
+
+### Search for products
+GET {{BASE_URL}}/products?search=logo
+
+### Get featured products
+GET {{BASE_URL}}/products?is_featured=true
+
+### Get featured categories
+GET {{BASE_URL}}/categories
