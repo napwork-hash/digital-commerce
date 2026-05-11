@@ -43,3 +43,50 @@ GET {{BASE_URL}}/products?is_featured=true
 
 ### Get featured categories
 GET {{BASE_URL}}/categories
+
+### Register
+POST {{BASE_URL}}/auth/register
+Accept: application/json
+Content-Type: application/json
+
+{
+  "name": "Customer Test",
+  "email": "customer@example.com",
+  "password": "password123",
+  "password_confirmation": "password123"
+}
+
+### Login
+POST {{BASE_URL}}/auth/login
+Accept: application/json
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "password123",
+  "device_name": "rest-client"
+}
+
+### Info Profile
+GET {{BASE_URL}}/auth/me
+Accept: application/json
+Authorization: Bearer 4|tlEXgIeFmDwftktFDiQMpepE9L4DAqJTEPkl3bmO4bf80ebe
+
+### Create a new product as admin
+POST {{BASE_URL}}/products
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer 5|oTsD36E1Np84phBo9GqpKpMmEFMUknNC89GRXTAx51e9a32d
+
+{
+  "category_id": 1,
+  "name": "Minimalist Logo Pack 2",
+  "short_description": "Clean and modern minimalist logo pack for business branding.",
+  "description": "This digital product includes editable logo files, preview assets, and brand usage examples.",
+  "price": 250000,
+  "compare_at_price": 350000,
+  "file_type": "zip",
+  "file_size": 2048000,
+  "is_active": true,
+  "is_featured": true
+}
