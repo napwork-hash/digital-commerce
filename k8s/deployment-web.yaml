@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-web
+  namespace: digital-commerce
+  labels:
+    app: laravel-web
+    app.kubernetes.io/component: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: laravel-web
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0 # zero-downtime deploy
+  template:
+    metadata:
+      labels:
+        app: laravel-web
+        app.kubernetes.io/component: web
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "80"
+    spec:
+      terminationGracePeriodSeconds: 30
+
+      # Jalankan migrate sebelum web pod ready
+      initContainers:
+        - name: migrate
+          image: ghcr.io/napwork-hash/digital-commerce:latest
+          command: ["php", "artisan", "migrate", "--force"]
+          envFrom:
+            - secretRef:
+                name: laravel-env
+          volumeMounts:
+            - name: storage
+              mountPath: /var/www/html/storage
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+
+      containers:
+        - name: laravel
+          image: ghcr.io/napwork-hash/digital-commerce:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+          envFrom:
+            - secretRef:
+                name: laravel-env
+          volumeMounts:
+            - name: storage
+              mountPath: /var/www/html/storage
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /up
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /up
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+
+          # Graceful shutdown — tunggu request selesai sebelum pod mati
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: laravel-storage

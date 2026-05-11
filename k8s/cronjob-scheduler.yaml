@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: laravel-scheduler
+  namespace: digital-commerce
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid # jangan overlap jika job sebelumnya masih jalan
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 30
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 60 # kill jika lebih dari 60 detik
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: scheduler
+              image: ghcr.io/napwork-hash/digital-commerce:latest
+              imagePullPolicy: Always
+              command: ["php", "artisan", "schedule:run"]
+              envFrom:
+                - secretRef:
+                    name: laravel-env
+              volumeMounts:
+                - name: storage
+                  mountPath: /var/www/html/storage
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "256Mi"
+          volumes:
+            - name: storage
+              persistentVolumeClaim:
+                claimName: laravel-storage

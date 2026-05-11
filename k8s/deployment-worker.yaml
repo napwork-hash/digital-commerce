@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-worker
+  namespace: digital-commerce
+  labels:
+    app: laravel-worker
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: laravel-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: laravel-worker
+        app.kubernetes.io/component: worker
+    spec:
+      terminationGracePeriodSeconds: 60 # beri waktu job selesai
+
+      containers:
+        - name: worker
+          image: ghcr.io/napwork-hash/digital-commerce:latest
+          imagePullPolicy: Always
+          # Override entrypoint — skip config:cache, langsung queue:work
+          command: ["php", "artisan", "queue:work"]
+          args:
+            - "--sleep=3"
+            - "--tries=3"
+            - "--max-time=3500" # restart sebelum terminationGracePeriod habis
+            - "--memory=256"
+          envFrom:
+            - secretRef:
+                name: laravel-env
+          volumeMounts:
+            - name: storage
+              mountPath: /var/www/html/storage
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+
+          livenessProbe:
+            exec:
+              command:
+                - php
+                - artisan
+                - queue:monitor
+                - "--json"
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            failureThreshold: 3
+
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: laravel-storage

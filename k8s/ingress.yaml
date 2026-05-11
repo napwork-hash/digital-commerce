@@ -1,0 +1,63 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: laravel-ingress
+  namespace: digital-commerce
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`digital-commerce.napskytech.com`)
+      kind: Rule
+      middlewares:
+        - name: laravel-headers
+      services:
+        - name: laravel-svc
+          port: 80
+  tls:
+    certResolver: letsencrypt
+
+---
+# Redirect HTTP → HTTPS
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: laravel-ingress-http
+  namespace: digital-commerce
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`digital-commerce.napskytech.com`)
+      kind: Rule
+      middlewares:
+        - name: redirect-https
+      services:
+        - name: laravel-svc
+          port: 80
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: digital-commerce
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: laravel-headers
+  namespace: digital-commerce
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https" # Laravel trust proxy
+    customResponseHeaders:
+      X-Frame-Options: "SAMEORIGIN"
+      X-Content-Type-Options: "nosniff"
+      Referrer-Policy: "strict-origin-when-cross-origin"

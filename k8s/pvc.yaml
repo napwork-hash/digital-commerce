@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: laravel-storage
+  namespace: digital-commerce
+spec:
+  accessModes:
+    - ReadWriteOnce # ganti ke ReadWriteMany jika pakai Longhorn + multi-node
+  storageClassName: local-path # default k3s; ganti ke longhorn jika tersedia
+  resources:
+    requests:
+      storage: 5Gi

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: laravel-svc
+  namespace: digital-commerce
+  labels:
+    app: laravel-web
+spec:
+  type: ClusterIP
+  selector:
+    app: laravel-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
