@@ -39,6 +39,8 @@ spec:
           volumeMounts:
             - name: storage
               mountPath: /var/www/html/storage
+            - name: storage
+              mountPath: /var/www/html/logs
           resources:
             requests:
               cpu: "50m"
