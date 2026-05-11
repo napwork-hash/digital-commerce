@@ -1,4 +1,4 @@
-name: Build & Push to GHCR
+name: CI/CD Pipeline
 
 on:
   push:
@@ -12,24 +12,24 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
+# ============================================================
+# Job 1: Build & Push
+# ============================================================
 jobs:
-  build-push:
+  build:
     name: Build & Push Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      security-events: write # untuk Trivy SARIF upload
 
     outputs:
       image-digest: ${{ steps.build.outputs.digest }}
-      image-tag: ${{ steps.meta.outputs.tags }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Setup QEMU jika butuh multi-arch (opsional, skip jika amd64 only)
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -43,7 +43,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Generate tags: latest + sha + branch
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -54,7 +53,6 @@ jobs:
             type=sha,prefix=sha-,format=short
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      # Build dengan cache dari GHCR (cache-to/cache-from)
       - name: Build and Push
         id: build
         uses: docker/build-push-action@v6
@@ -65,20 +63,81 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
-          provenance: false # hindari manifest list issue di k3s
+          provenance: false
 
-      # Trivy scan
+  # ============================================================
+  # Job 2: Security Scan
+  # ============================================================
+  scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
-        if: github.event_name != 'pull_request'
 
       - name: Upload Trivy results to Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
-        if: github.event_name != 'pull_request'
+
+  # ============================================================
+  # Job 3: Deploy to k3s
+  # ============================================================
+  deploy:
+    name: Deploy to k3s
+    runs-on: ubuntu-latest
+    needs: [build, scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Apply k8s manifests
+        run: kubectl apply -f k8s/
+
+      - name: Rolling update to new image
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}"
+          kubectl set image deployment/laravel-web laravel=$IMAGE -n digital-commerce
+          kubectl set image deployment/laravel-worker worker=$IMAGE -n digital-commerce
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/laravel-web -n digital-commerce --timeout=120s
+          kubectl rollout status deployment/laravel-worker -n digital-commerce --timeout=120s
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n digital-commerce
+          kubectl get hpa -n digital-commerce
