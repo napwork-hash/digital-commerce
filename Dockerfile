@@ -66,7 +66,7 @@ RUN apt-get update \
         opcache \
         pdo_mysql \
         zip \
-    && a2enmod rewrite headers \
+    && a2enmod rewrite headers remoteip \
     && rm -rf /var/lib/apt/lists/*
 
 # Opcache tuning — validate_timestamps=0 karena image immutable
