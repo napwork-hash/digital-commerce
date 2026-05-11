@@ -66,6 +66,8 @@ RUN apt-get update \
         opcache \
         pdo_mysql \
         zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
     && a2enmod rewrite headers remoteip \
     && rm -rf /var/lib/apt/lists/*
 
