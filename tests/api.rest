@@ -62,7 +62,7 @@ Accept: application/json
 Content-Type: application/json
 
 {
-  "email": "admin@example.com",
+  "email": "customer@example.com",
   "password": "password123",
   "device_name": "rest-client"
 }
@@ -70,13 +70,13 @@ Content-Type: application/json
 ### Info Profile
 GET {{BASE_URL}}/auth/me
 Accept: application/json
-Authorization: Bearer 4|tlEXgIeFmDwftktFDiQMpepE9L4DAqJTEPkl3bmO4bf80ebe
+Authorization: Bearer 6|bFZqiWBli82KQCczRhPzk2QIKCm7slX7elP2m4SScf9a8c1e
 
 ### Create a new product as admin
 POST {{BASE_URL}}/products
 Accept: application/json
 Content-Type: application/json
-Authorization: Bearer 5|oTsD36E1Np84phBo9GqpKpMmEFMUknNC89GRXTAx51e9a32d
+Authorization: Bearer 6|bFZqiWBli82KQCczRhPzk2QIKCm7slX7elP2m4SScf9a8c1e
 
 {
   "category_id": 1,
